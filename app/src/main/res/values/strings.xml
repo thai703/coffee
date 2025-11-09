@@ -1,6 +1,6 @@
 <resources>
     <!-- Tên ứng dụng -->
-    <string name="app_name">22 August Coffee</string>
+    <string name="app_name">Coffee</string>
 
     <!-- Giỏ hàng -->
     <string name="cart_empty">Giỏ hàng của bạn đang trống!</string>

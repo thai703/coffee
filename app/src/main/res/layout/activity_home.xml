@@ -397,7 +397,7 @@
                 android:id="@+id/tvBrandStoryContent"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Tại 22 August Coffee, mỗi tách cà phê không chỉ là một thức uống, mà còn là nơi khơi nguồn cảm hứng, sẻ chia kỷ niệm và tận hưởng sự bình yên. Chúng tôi chọn lọc tinh hoa từ những vùng đất cà phê danh tiếng, mang đến hương vị đậm đà và chân thật nhất.\n\nChúng tôi không chỉ pha cà phê – chúng tôi tạo nên không gian để bạn tìm thấy chính mình, nạp lại năng lượng và lưu giữ những khoảnh khắc không quên."
+                android:text="Tại Coffee, mỗi tách cà phê không chỉ là một thức uống, mà còn là nơi khơi nguồn cảm hứng, sẻ chia kỷ niệm và tận hưởng sự bình yên. Chúng tôi chọn lọc tinh hoa từ những vùng đất cà phê danh tiếng, mang đến hương vị đậm đà và chân thật nhất.\n\nChúng tôi không chỉ pha cà phê – chúng tôi tạo nên không gian để bạn tìm thấy chính mình, nạp lại năng lượng và lưu giữ những khoảnh khắc không quên."
                 android:textSize="14sp"
                 android:lineSpacingExtra="4dp"
                 android:textColor="#444"/>

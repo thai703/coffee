@@ -47,7 +47,7 @@ public class BillActivity extends AppCompatActivity {
         String voucherCode = getIntent().getStringExtra("voucher"); // LẤY MÃ VOUCHER
 
         // Đặt dữ liệu vào các TextView
-        txtStoreName.setText("22 AUGUST COFFEE");
+        txtStoreName.setText("COFFEE");
         txtStoreAddress.setText("42/5 Đường Số 2, Hiệp Bình Phước, TP Thủ Đức, Hồ Chí Minh");
         txtTime.setText("Thời gian: " + timestamp);
         txtCustomer.setText("Khách hàng: " + userName);

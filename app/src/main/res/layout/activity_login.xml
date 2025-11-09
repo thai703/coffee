@@ -10,27 +10,29 @@
     tools:context=".UI.Login.LoginActivity">
 
     <!-- Tiêu đề -->
+
+    <!-- Tiêu đề phụ-->
     <TextView
         android:id="@+id/tvAppName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="☕ August 22 Coffee ☕"
+        android:layout_marginTop="80dp"
+        android:fontFamily="serif"
+        android:gravity="center"
+        android:text="☕ Coffee ☕"
+        android:textColor="#4E342E"
         android:textSize="28sp"
         android:textStyle="bold"
-        android:textColor="#4E342E"
-        android:gravity="center"
-        android:fontFamily="serif"
-        app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="80dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Tiêu đề phụ-->
     <TextView
         android:id="@+id/tvSubTitle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Chào mừng tới App coffee Hoài Nam"
+        android:text="Chào mừng tới App coffee"
         android:textSize="16sp"
         android:textColor="#6D4C41"
         android:gravity="center"

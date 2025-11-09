@@ -74,7 +74,7 @@ public class AddEditProductActivity extends AppCompatActivity {
 
         int price = Integer.parseInt(priceStr);
         String id = productRef.push().getKey();
-        Product product = new Product(id, name, price, desc, imageUrl, category);
+        Product product = new Product(id, name, price, imageUrl, category, desc);
 
         productRef.child(id).setValue(product)
                 .addOnSuccessListener(unused -> {
