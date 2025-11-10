@@ -27,5 +27,25 @@
         android:layout_height="wrap_content"
         android:textSize="14sp"
         android:textColor="@android:color/black" />
+        
+    <!-- NEW: Trạng thái -->
+    <TextView
+        android:id="@+id/text_order_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Đang chờ"
+        android:textSize="12sp"
+        android:textColor="#444444"
+        android:layout_marginTop="2dp" />
 
+    <!-- NEW: Mã nhận hàng -->
+    <TextView
+        android:id="@+id/text_pickup_code"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Mã: ------"
+        android:textStyle="bold"
+        android:textSize="12sp"
+        android:textColor="#111111"
+        android:layout_marginTop="2dp" />
 </LinearLayout>

@@ -61,6 +61,30 @@
             android:dividerHeight="1dp" />
     </LinearLayout>
 
+        <!-- NEW: trạng thái đơn -->
+    <TextView
+        android:id="@+id/text_order_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Trạng thái: -"
+        android:textSize="14sp"
+        android:textColor="@android:color/black"
+        android:layout_marginTop="8dp"
+        android:gravity="center" />
+
+    <!-- NEW: mã nhận hàng (pickup code) -->
+    <TextView
+        android:id="@+id/text_pickup_code"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="------"
+        android:textStyle="bold"
+        android:textSize="22sp"
+        android:textColor="@android:color/black"
+        android:gravity="center"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="8dp" />
+
     <TextView
         android:id="@+id/detail_payment_method"
         android:layout_width="wrap_content"

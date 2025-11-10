@@ -70,53 +70,75 @@ public class OrderHistoryActivity extends AppCompatActivity {
     }
 
     private void loadOrderHistory() {
-        FirebaseUser currentUser = mAuth.getCurrentUser();
+    FirebaseUser currentUser = mAuth.getCurrentUser();
 
-        if (currentUser == null) {
-            Toast.makeText(this, "Bạn cần đăng nhập để xem lịch sử đơn hàng.", Toast.LENGTH_LONG).show();
+    if (currentUser == null) {
+        Toast.makeText(this, "Bạn cần đăng nhập để xem lịch sử đơn hàng.", Toast.LENGTH_LONG).show();
+        progressBar.setVisibility(View.GONE);
+        noOrdersTextView.setVisibility(View.VISIBLE);
+        return;
+    }
+
+    String userId = currentUser.getUid();
+    progressBar.setVisibility(View.VISIBLE);
+    noOrdersTextView.setVisibility(View.GONE);
+
+    // CHANGED: đọc lite history tại /users/{uid}/orders
+    DatabaseReference ref = FirebaseDatabase.getInstance()
+            .getReference("users").child(userId).child("orders"); // CHANGED
+
+    ref.addValueEventListener(new ValueEventListener() { // KEEP: realtime listener
+        @Override
+        public void onDataChange(@NonNull DataSnapshot snapshot) {
+            orderList.clear();
+
+            for (DataSnapshot s : snapshot.getChildren()) {
+                // NEW: lấy orderId từ key
+                String orderId = s.getKey();
+
+                // NEW: total có thể là Double hoặc Long => đọc linh hoạt
+                Double totalD = s.child("total").getValue(Double.class);
+                Long totalL = (totalD == null) ? s.child("total").getValue(Long.class) : null;
+                double total = (totalD != null) ? totalD : (totalL != null ? totalL : 0);
+
+                String status = s.child("status").getValue(String.class);
+                Long createdAt = s.child("createdAt").getValue(Long.class);
+
+                // NEW: build Bill "nhẹ" chỉ đủ cho list
+                Bill b = new Bill();                 // KEEP: dùng model Bill
+                b.setBillId(orderId);                // NEW: dùng làm id hiển thị & mở chi tiết
+                b.setStatus(status);                 // NEW
+                b.setTotal(total);                   // NEW
+                if (createdAt != null) {
+                    b.setTimestamp(new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm")
+                            .format(new java.util.Date(createdAt))); // NEW
+                }
+
+                orderList.add(b);
+            }
+
             progressBar.setVisibility(View.GONE);
-            noOrdersTextView.setVisibility(View.VISIBLE);
-            return;
+
+            // KEEP/CHANGED: cập nhật adapter
+            orderAdapter.setOrders(orderList); // nếu hàm bạn tên khác (update/setData) thì dùng đúng tên
+
+            if (orderList.isEmpty()) {
+                noOrdersTextView.setVisibility(View.VISIBLE);
+                recyclerView.setVisibility(View.GONE);
+            } else {
+                noOrdersTextView.setVisibility(View.GONE);
+                recyclerView.setVisibility(View.VISIBLE);
+            }
         }
 
-        String userId = currentUser.getUid();
-        progressBar.setVisibility(View.VISIBLE);
-        noOrdersTextView.setVisibility(View.GONE);
+        @Override
+        public void onCancelled(@NonNull DatabaseError error) {
+            progressBar.setVisibility(View.GONE);
+            noOrdersTextView.setVisibility(View.VISIBLE);
+            Toast.makeText(OrderHistoryActivity.this, "Không thể tải đơn hàng: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Firebase error: " + error.getMessage());
+        }
+    });
+}
 
-        dbRef.child("OrderHistory").child(userId).addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                orderList.clear();
-
-                for (DataSnapshot billSnapshot : snapshot.getChildren()) {
-                    Bill bill = billSnapshot.getValue(Bill.class); // Sử dụng Bill thay vì Order
-                    if (bill != null) {
-                        bill.setBillId(billSnapshot.getKey()); // Gán billId
-                        orderList.add(bill);
-                    } else {
-                        Log.w(TAG, "Bill is null for key: " + billSnapshot.getKey());
-                    }
-                }
-
-                progressBar.setVisibility(View.GONE);
-                orderAdapter.setOrders(orderList);
-
-                if (orderList.isEmpty()) {
-                    noOrdersTextView.setVisibility(View.VISIBLE);
-                    recyclerView.setVisibility(View.GONE);
-                } else {
-                    noOrdersTextView.setVisibility(View.GONE);
-                    recyclerView.setVisibility(View.VISIBLE);
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                progressBar.setVisibility(View.GONE);
-                noOrdersTextView.setVisibility(View.VISIBLE);
-                Toast.makeText(OrderHistoryActivity.this, "Không thể tải đơn hàng: " + error.getMessage(), Toast.LENGTH_SHORT).show();
-                Log.e(TAG, "Firebase error: " + error.getMessage());
-            }
-        });
-    }
 }

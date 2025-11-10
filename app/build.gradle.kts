@@ -53,7 +53,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation ("androidx.cardview:cardview:1.0.0")
-
+    implementation("com.google.firebase:firebase-messaging")  // NEW
 
     // Glide (để tải ảnh từ URL)
     implementation ("com.github.bumptech.glide:glide:4.12.0")
