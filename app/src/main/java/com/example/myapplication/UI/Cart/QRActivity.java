@@ -1,7 +1,6 @@
 package com.example.myapplication.UI.Cart;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
@@ -32,7 +31,7 @@ public class QRActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_qr); // layout màn QR (chứa qrImage, tvInstruction, btnConfirmQR)
+        setContentView(R.layout.activity_qr); // layout có: qrImage, tvInstruction, btnConfirmQR
 
         // RTDB root
         rootRef = FirebaseDatabase.getInstance().getReference();
@@ -52,17 +51,16 @@ public class QRActivity extends AppCompatActivity {
 
         Log.d(TAG, "paymentMethod=" + paymentMethod);
 
-        // ===== Nhánh TIỀN MẶT: không hiển thị QR, tạo đơn (hoặc bấm nút để tạo) =====
+        // ===== Nhánh TIỀN MẶT: tự động tạo đơn, KHÔNG hiển thị QR =====
         if ("cash".equalsIgnoreCase(paymentMethod)) {
             if (qrImage != null) qrImage.setVisibility(ImageView.GONE);
-            if (tvInstruction != null) tvInstruction.setText("Thanh toán tiền mặt tại quầy. Nhấn nút để tạo đơn.");
-            if (btnConfirmQR != null) {
-                btnConfirmQR.setText("Tạo đơn (tiền mặt)");
-                btnConfirmQR.setOnClickListener(v ->
-                        createOrderAndNavigate(userName, timestamp, total, cartItems, paymentMethod)
-                );
-            }
-            return; // ❗ Dừng tại đây để KHÔNG chạy phần hiển thị QR bên dưới
+            if (tvInstruction != null) tvInstruction.setText("Thanh toán tiền mặt tại quầy. Đang tạo đơn...");
+
+            // Tạo order NGAY, không cần bấm nút
+            createOrderAndNavigate(userName, timestamp, total, cartItems, paymentMethod);
+
+            if (btnConfirmQR != null) btnConfirmQR.setEnabled(false); // tránh double
+            return; // ❗ dừng để không rơi xuống nhánh QR
         }
 
         // ===== Nhánh MÃ QR (QR thanh toán tĩnh): hiển thị ảnh + bấm nút để tạo đơn =====
@@ -102,7 +100,8 @@ public class QRActivity extends AppCompatActivity {
         rootRef.child("users").child(uid).child("fcmToken").get().addOnSuccessListener(tokenSnap -> {
             String deviceToken = tokenSnap.getValue(String.class);
 
-            Bill order = new Bill(userName, timestamp, total, cartItems, paymentMethod, null);
+            // Dùng model Bill hiện có, tham số cuối là String -> để null
+            Bill order = new Bill(userName, timestamp, total, cartItems, paymentMethod, (String) null);
             order.setBillId(orderId);
             order.setUserId(uid);
             order.setStatus("pending");
@@ -119,7 +118,7 @@ public class QRActivity extends AppCompatActivity {
         }).addOnFailureListener(e -> {
             Log.w(TAG, "Không đọc được fcmToken, vẫn tạo đơn.", e);
 
-            Bill order = new Bill(userName, timestamp, total, cartItems, paymentMethod, null);
+            Bill order = new Bill(userName, timestamp, total, cartItems, paymentMethod, (String) null);
             order.setBillId(orderId);
             order.setUserId(uid);
             order.setStatus("pending");
