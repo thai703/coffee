@@ -1,170 +1,172 @@
 package com.example.myapplication.UI.Cart;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast; 
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
+import com.example.myapplication.Item.CartItem;
 import com.example.myapplication.manager.CartManager;
 import com.example.myapplication.model.Bill;
-import com.example.myapplication.Item.CartItem;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.auth.FirebaseAuth; 
 
-
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random; 
+import java.util.Random;
 
 public class QRActivity extends AppCompatActivity {
 
-    // CHANGED: từ "bills" (1 node) -> rootRef (ghi /orders và /users/{uid}/orders)
-    private DatabaseReference rootRef;                               // CHANGED
+    private static final String TAG = "QRActivity";
+    private DatabaseReference rootRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_qr);
+        setContentView(R.layout.activity_qr); // layout màn QR (chứa qrImage, tvInstruction, btnConfirmQR)
 
-        // CHANGED: thay vì getReference("bills"), dùng root
-        rootRef = FirebaseDatabase.getInstance().getReference();     // CHANGED
+        // RTDB root
+        rootRef = FirebaseDatabase.getInstance().getReference();
 
-        // KEEP: ánh xạ view
+        // Views
         ImageView qrImage = findViewById(R.id.qrImage);
         TextView tvInstruction = findViewById(R.id.tvInstruction);
         Button btnConfirmQR = findViewById(R.id.btnConfirmQR);
 
-        // KEEP: hiển thị ảnh QR minh hoạ + hướng dẫn
-        qrImage.setImageResource(R.drawable.qr_code);
-        tvInstruction.setText("Quét mã QR để thanh toán qua ứng dụng ngân hàng của bạn");
-
-        // KEEP: lấy dữ liệu từ Intent
+        // Nhận dữ liệu truyền sang
         String userName = getIntent().getStringExtra("userName");
         String timestamp = getIntent().getStringExtra("timestamp");
         double total = getIntent().getDoubleExtra("total", 0.0);
         @SuppressWarnings("unchecked")
         List<CartItem> cartItems = (List<CartItem>) getIntent().getSerializableExtra("cartItems");
-        String paymentMethod = getIntent().getStringExtra("paymentMethod");
+        String paymentMethod = getIntent().getStringExtra("paymentMethod"); // "cash" | "qr"
 
-        // NEW: thay vì ghi "bills" trực tiếp, ta gọi hàm tạo ORDER + chuyển màn
-        btnConfirmQR.setOnClickListener(v ->
-                createOrderAndNavigate(userName, timestamp, total, cartItems, paymentMethod) // NEW
-        );
+        Log.d(TAG, "paymentMethod=" + paymentMethod);
+
+        // ===== Nhánh TIỀN MẶT: không hiển thị QR, tạo đơn (hoặc bấm nút để tạo) =====
+        if ("cash".equalsIgnoreCase(paymentMethod)) {
+            if (qrImage != null) qrImage.setVisibility(ImageView.GONE);
+            if (tvInstruction != null) tvInstruction.setText("Thanh toán tiền mặt tại quầy. Nhấn nút để tạo đơn.");
+            if (btnConfirmQR != null) {
+                btnConfirmQR.setText("Tạo đơn (tiền mặt)");
+                btnConfirmQR.setOnClickListener(v ->
+                        createOrderAndNavigate(userName, timestamp, total, cartItems, paymentMethod)
+                );
+            }
+            return; // ❗ Dừng tại đây để KHÔNG chạy phần hiển thị QR bên dưới
+        }
+
+        // ===== Nhánh MÃ QR (QR thanh toán tĩnh): hiển thị ảnh + bấm nút để tạo đơn =====
+        if (qrImage != null) qrImage.setImageResource(R.drawable.qr_code); // ảnh QR tĩnh của bạn
+        if (tvInstruction != null) tvInstruction.setText("Quét mã QR để thanh toán qua ứng dụng ngân hàng");
+        if (btnConfirmQR != null) {
+            btnConfirmQR.setOnClickListener(v ->
+                    createOrderAndNavigate(userName, timestamp, total, cartItems, paymentMethod)
+            );
+        }
     }
 
     /**
-     * NEW: Tạo đơn hàng dưới /orders/{orderId} + bản sao /users/{uid}/orders/{orderId}
-     *  - status = "pending"
-     *  - pickupCode = mã 6 số
-     *  - createdAt/updatedAt + statusHistory.pendingAt
-     *  - optional: deviceToken (để FCM)
+     * Tạo ORDER trong /orders và bản sao nhẹ ở /users/{uid}/orders; sau đó chuyển BillActivity
      */
-    private void createOrderAndNavigate(
-            String userName,
-            String timestamp,
-            double total,
-            List<CartItem> cartItems,
-            String paymentMethod
-    ) {
-        // NEW: cần uid để lưu lịch sử theo user
-        if (FirebaseAuth.getInstance().getCurrentUser() == null) {       // NEW
+    private void createOrderAndNavigate(String userName, String timestamp, double total,
+                                        List<CartItem> cartItems, String paymentMethod) {
+        String uid = FirebaseAuth.getInstance().getCurrentUser() != null
+                ? FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
+
+        if (uid == null) {
             Toast.makeText(this, "Bạn cần đăng nhập trước khi đặt.", Toast.LENGTH_LONG).show();
             return;
         }
-        String uid = FirebaseAuth.getInstance().getCurrentUser().getUid(); // NEW
 
-        DatabaseReference ordersRef = rootRef.child("orders");           // NEW
-
-        // NEW: tạo orderId + pickupCode
-        String orderId = ordersRef.push().getKey();                      // NEW
+        DatabaseReference ordersRef = rootRef.child("orders");
+        String orderId = ordersRef.push().getKey();
         if (orderId == null) {
-            Toast.makeText(this, "Không tạo được mã đơn. Vui lòng thử lại.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Không tạo được mã đơn hàng.", Toast.LENGTH_LONG).show();
             return;
         }
-        String pickupCode = String.format("%06d", new Random().nextInt(1_000_000)); // NEW
-        long now = System.currentTimeMillis();                            // NEW
 
-        // CHANGED: vẫn dùng Bill cũ, nhưng set thêm field mới (đã thêm ở mục 2)
-        Bill order = new Bill(userName, timestamp, total, cartItems, paymentMethod, orderId); // KEEP + CHANGED
-        order.setBillId(orderId);                 // KEEP (để không vỡ các chỗ đang dùng billId)
-        order.setUserId(uid);                     // NEW  (field mới trong Bill.java)
-        order.setPaymentStatus("unpaid");         // NEW  ("paid" nếu đã trả)
-        order.setStatus("pending");               // NEW
+        long now = System.currentTimeMillis();
+        String pickupCode = String.format("%06d", new Random().nextInt(1_000_000));
 
-        Map<String, Long> hist = new HashMap<>(); // NEW
-        hist.put("pendingAt", now);               // NEW
-        order.setStatusHistory(hist);             // NEW
+        // (Tuỳ chọn) đọc FCM token để đính kèm vào order
+        rootRef.child("users").child(uid).child("fcmToken").get().addOnSuccessListener(tokenSnap -> {
+            String deviceToken = tokenSnap.getValue(String.class);
 
-        order.setPickupCode(pickupCode);          // NEW
-        order.setCreatedAt(now);                  // NEW
-        order.setUpdatedAt(now);                  // NEW
-        order.setPickupMethod("pickup");          // NEW ("dine-in" nếu phục vụ tại bàn)
+            Bill order = new Bill(userName, timestamp, total, cartItems, paymentMethod, null);
+            order.setBillId(orderId);
+            order.setUserId(uid);
+            order.setStatus("pending");
+            Map<String, Long> hist = new HashMap<>();
+            hist.put("pendingAt", now);
+            order.setStatusHistory(hist);
+            order.setPickupCode(pickupCode);
+            order.setCreatedAt(now);
+            order.setUpdatedAt(now);
+            order.setPaymentStatus("unpaid"); // tuỳ flow của bạn
+            order.setDeviceToken(deviceToken);
 
-        // NEW: lấy FCM token (nếu đã lưu) để nhúng vào order -> web có thể gửi push
-        rootRef.child("users").child(uid).child("fcmToken").get().addOnSuccessListener(snap -> { // NEW
-            String token = snap.getValue(String.class);                 // NEW
-            order.setDeviceToken(token);                                // NEW
-
-            // NEW: ghi order + lịch sử và chuyển màn
-            writeOrderThenGo(orderId, order, uid, total, now, userName, timestamp, cartItems, paymentMethod, pickupCode);
-
+            writeOrderThenGo(orderId, order, uid);
         }).addOnFailureListener(e -> {
-            // NEW: không lấy được token vẫn tạo order bình thường
-            writeOrderThenGo(orderId, order, uid, total, now, userName, timestamp, cartItems, paymentMethod, pickupCode);
+            Log.w(TAG, "Không đọc được fcmToken, vẫn tạo đơn.", e);
+
+            Bill order = new Bill(userName, timestamp, total, cartItems, paymentMethod, null);
+            order.setBillId(orderId);
+            order.setUserId(uid);
+            order.setStatus("pending");
+            Map<String, Long> hist = new HashMap<>();
+            hist.put("pendingAt", now);
+            order.setStatusHistory(hist);
+            order.setPickupCode(pickupCode);
+            order.setCreatedAt(now);
+            order.setUpdatedAt(now);
+            order.setPaymentStatus("unpaid");
+
+            writeOrderThenGo(orderId, order, uid);
         });
     }
 
-    // NEW: tách hàm ghi DB + điều hướng để tái sử dụng
-    private void writeOrderThenGo(
-            String orderId,
-            Bill order,
-            String uid,
-            double total,
-            long now,
-            String userName,
-            String timestamp,
-            List<CartItem> cartItems,
-            String paymentMethod,
-            String pickupCode
-    ) {
-        DatabaseReference ordersRef = rootRef.child("orders");           // NEW
+    private void writeOrderThenGo(String orderId, Bill order, String uid) {
+        DatabaseReference ordersRef = rootRef.child("orders");
 
-        // NEW: 1) ghi /orders/{orderId}
+        Log.d(TAG, "Writing order /orders/" + orderId);
         ordersRef.child(orderId).setValue(order).addOnSuccessListener(v -> {
-
-            // NEW: 2) bản sao nhẹ cho lịch sử /users/{uid}/orders/{orderId}
+            // Bản sao nhẹ cho lịch sử user
             Map<String, Object> lite = new HashMap<>();
-            lite.put("total", total);
-            lite.put("status", "pending");
-            lite.put("createdAt", now);
-            lite.put("updatedAt", now);
-            rootRef.child("users").child(uid).child("orders").child(orderId).setValue(lite);
+            lite.put("total", order.getTotal());
+            lite.put("status", order.getStatus());
+            lite.put("createdAt", order.getCreatedAt());
+            lite.put("updatedAt", order.getUpdatedAt());
+            if (order.getStoreId() != null) lite.put("storeId", order.getStoreId());
 
-            // CHANGED: 3) chuyển sang BillActivity + truyền thêm pickupCode & orderId
-            Intent intent = new Intent(QRActivity.this, BillActivity.class);  // KEEP
-            intent.putExtra("userName", userName);                            // KEEP
-            intent.putExtra("timestamp", timestamp);                          // KEEP
-            intent.putExtra("total", total);                                  // KEEP
-            intent.putExtra("cartItems", new ArrayList<>(cartItems));         // KEEP
-            intent.putExtra("billId", orderId);       // KEEP key cũ nhưng giá trị là orderId  (CHANGED)
-            intent.putExtra("orderId", orderId);      // NEW
-            intent.putExtra("pickupCode", pickupCode);// NEW
-            intent.putExtra("paymentMethod", paymentMethod);                  // KEEP
-            startActivity(intent);                                             // KEEP
+            rootRef.child("users").child(uid).child("orders").child(orderId).updateChildren(lite);
 
-            // KEEP: xoá giỏ hàng
+            // Xoá giỏ & chuyển màn
             CartManager.getInstance().clearCart();
 
+            Intent intent = new Intent(QRActivity.this, BillActivity.class);
+            intent.putExtra("userName", order.getUserName());
+            intent.putExtra("timestamp", order.getTimestamp());
+            intent.putExtra("total", order.getTotal());
+            intent.putExtra("cartItems", new java.util.ArrayList<>(order.getItems()));
+            intent.putExtra("billId", orderId);       // giữ key cũ để BillActivity dùng lại
+            intent.putExtra("paymentMethod", order.getPaymentMethod());
+            intent.putExtra("pickupCode", order.getPickupCode());
+            startActivity(intent);
+
+            finish(); // đóng QRActivity
         }).addOnFailureListener(e -> {
-            Toast.makeText(QRActivity.this, "Lỗi tạo đơn: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Log.e(TAG, "Ghi /orders thất bại", e);
+            Toast.makeText(QRActivity.this, "Không thể tạo đơn: " + e.getMessage(), Toast.LENGTH_LONG).show();
         });
     }
 }

@@ -16,18 +16,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.myapplication.R;
 import com.example.myapplication.adapter.CartAdapter;
 import com.example.myapplication.manager.CartManager;
-import com.example.myapplication.model.Bill;
-import com.example.myapplication.Item.CartItem;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 
 public class CartActivity extends AppCompatActivity {
@@ -37,15 +30,15 @@ public class CartActivity extends AppCompatActivity {
     private TextView tvTotalPrice, tvEmptyCartMessage;
     private Button btnConfirmPurchase;
     private CartManager cartManager;
-    private DatabaseReference databaseReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // ✅ Dùng layout GIỎ HÀNG (trước đây bạn set nhầm activity_qr)
         setContentView(R.layout.activity_cart);
 
         cartManager = CartManager.getInstance();
-        databaseReference = FirebaseDatabase.getInstance().getReference("bills");
 
         // Ánh xạ view
         ImageButton btnBack = findViewById(R.id.btnBack);
@@ -76,6 +69,7 @@ public class CartActivity extends AppCompatActivity {
         updateTotalPrice();
         checkEmptyCartState();
 
+        // ✅ Giữ 2 phương thức: Tiền mặt & QR thanh toán
         btnConfirmPurchase.setOnClickListener(v -> {
             if (cartManager.getCartItems().isEmpty()) {
                 Toast.makeText(CartActivity.this, "Giỏ hàng của bạn đang trống!", Toast.LENGTH_SHORT).show();
@@ -85,63 +79,24 @@ public class CartActivity extends AppCompatActivity {
             new AlertDialog.Builder(CartActivity.this)
                     .setTitle("Chọn phương thức thanh toán")
                     .setItems(new String[]{"Tiền mặt", "Mã QR"}, (dialog, which) -> {
-                        String timestamp = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(new Date());
-                        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                        String timestamp = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+                                .format(new Date());
 
-                        final String userName = currentUser != null ? currentUser.getEmail() : "Khách hàng ẩn danh";
-                        final String userId = currentUser != null ? currentUser.getUid() : null;
+                        // Chuẩn hoá paymentMethod để QRActivity phân nhánh
+                        String paymentMethod = (which == 0) ? "cash" : "qr";
 
-                        if (userId == null) {
-                            Toast.makeText(CartActivity.this, "Vui lòng đăng nhập để mua hàng.", Toast.LENGTH_LONG).show();
-                            return;
-                        }
-
-                        double total = cartManager.getTotalPrice();
-                        List<CartItem> cartItems = cartManager.getCartItems();
-                        String paymentMethod = (which == 0) ? "Tiền mặt" : "Mã QR";
-
-                        String billId = databaseReference.push().getKey();
-
-                        if (which == 1) {
-                            Intent intent = new Intent(CartActivity.this, QRActivity.class);
-                            intent.putExtra("userName", userName);
-                            intent.putExtra("timestamp", timestamp);
-                            intent.putExtra("total", total);
-                            intent.putExtra("cartItems", new ArrayList<>(cartItems));
-                            intent.putExtra("billId", billId);
-                            intent.putExtra("paymentMethod", paymentMethod);
-                            startActivity(intent);
-                            return;
-                        }
-
-                        Bill bill = new Bill(userName, timestamp, total, cartItems, paymentMethod, null);
-                        if (billId != null) {
-                            bill.setBillId(billId);
-
-                            // Lưu vào "bills"
-                            DatabaseReference userBillsRef = FirebaseDatabase.getInstance().getReference("bills").child(userId);
-                            userBillsRef.child(billId).setValue(bill);
-
-                            // Lưu vào "OrderHistory"
-                            DatabaseReference historyRef = FirebaseDatabase.getInstance().getReference("OrderHistory").child(userId);
-                            historyRef.child(billId).setValue(bill);
-                        }
-
-                        Intent intent = new Intent(CartActivity.this, BillActivity.class);
-                        intent.putExtra("userName", userName);
+                        Intent intent = new Intent(CartActivity.this, QRActivity.class);
+                        intent.putExtra(
+                                "userName",
+                                com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null
+                                        ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getEmail()
+                                        : "Khách hàng ẩn danh"
+                        );
                         intent.putExtra("timestamp", timestamp);
-                        intent.putExtra("total", total);
-                        intent.putExtra("cartItems", new ArrayList<>(cartItems));
-                        intent.putExtra("billId", billId);
+                        intent.putExtra("total", cartManager.getTotalPrice());
+                        intent.putExtra("cartItems", new ArrayList<>(cartManager.getCartItems()));
                         intent.putExtra("paymentMethod", paymentMethod);
                         startActivity(intent);
-
-                        cartManager.clearCart();
-                        cartAdapter.updateCartItems(cartManager.getCartItems());
-                        updateTotalPrice();
-                        checkEmptyCartState();
-
-                        Toast.makeText(CartActivity.this, "Đơn hàng đã được tạo!", Toast.LENGTH_SHORT).show();
                     })
                     .setNegativeButton("Hủy", null)
                     .show();
@@ -170,3 +125,4 @@ public class CartActivity extends AppCompatActivity {
         checkEmptyCartState();
     }
 }
+    
